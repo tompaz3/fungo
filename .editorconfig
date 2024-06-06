@@ -8,6 +8,7 @@ charset = utf-8
 trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
+ij_any_keep_indents_on_empty_lines = false
 
 [{Makefile,go.mod,go.sum,*.go,.gitmodules}]
 indent_style = tab
