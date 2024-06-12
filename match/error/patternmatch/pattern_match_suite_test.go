@@ -1,4 +1,4 @@
-package errmatch_test
+package patternmatch_test
 
 import (
 	"testing"
@@ -7,8 +7,8 @@ import (
 	o "github.com/onsi/gomega"
 )
 
-func TestError(t *testing.T) {
+func TestPatternMatch(t *testing.T) {
 	t.Parallel()
 	o.RegisterFailHandler(g.Fail)
-	g.RunSpecs(t, "Error Suite")
+	g.RunSpecs(t, "PatternMatch Suite")
 }
