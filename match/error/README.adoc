@@ -10,8 +10,8 @@ This package was created to enable an easier way to match errors in Go.
 
 It provides 2 ways to work with matching Go errors:
 
-* link:github.com/tompaz3/fungo/match/error[] - with simple free functions to work with errors
-* link:github.com/tompaz3/fungo/match/error/patternmatch[] [experimental] - with `Switch` - `Case` matching helpers and rules.
+* link:https://github.com/tompaz3/fungo/tree/main/match/error[] - with simple free functions to work with errors
+* link:https://github.com/tompaz3/fungo/tree/main/match/error/patternmatch[] [experimental] - with `Switch` - `Case` matching helpers and rules.
 
 [#error_package]
 == error
@@ -28,7 +28,7 @@ Additionally, `ErrorPredicate` type allows composition of predicates using `And`
 
 For all the examples below, we will use the following error types.
 For the sake of brevity, we won't be showing the `Error` interface implementation, but let's assume that all the errors below have the `Error() string` function implemented.
-See the full implementation at link:https://github.com/tompaz3/fungo/blob/main/match/error/example_errors_test.go[]
+See the full implementation at link:https://github.com/tompaz3/fungo/blob/main/match/error/example_errors_test.go[example_errors_test.go]
 
 [source,go,linenums,caption="errors.go"]
 ----
@@ -53,7 +53,7 @@ type PaymentGatewayRejectedError struct {
 
 ==== Match errors by type
 
-See full example at link:https://github.com/tompaz3/fungo/blob/main/match/error/examples_test.go#L30[examples_test.go#L30]
+See full example at link:https://github.com/tompaz3/fungo/blob/main/match/error/examples_test.go#L53[examples_test.go#HandleErrorByType]
 
 [source,go,linenums,caption="type_check.go"]
 ----
