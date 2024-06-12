@@ -1,107 +1,58 @@
-package errmatch
+package match
 
-import (
-	"errors"
-)
+import "errors"
 
-var ErrNoMatchFound = errors.New("no match found")
+type ErrorPredicate[E error] func(err E) bool
 
-type (
-	ResultFunc[R any]         func(err error) (R, error)
-	MatchFunc[E error, R any] func(err E) (R, error)
-	ErrPredicateFunc[E error] func(err error) (E, bool)
-)
-
-func Switch[R any](err error, fns ...ResultFunc[R]) (R, error) {
-	for _, fn := range fns {
-		if fn != nil {
-			res, resErr := fn(err)
-			if errors.Is(resErr, ErrNoMatchFound) {
-				continue
-			}
-
-			return res, resErr
-		}
+// ErrorType - tests if given error is of the expected type (generic parameter)
+// and returns the typed error with a boolean test result.
+func ErrorType[E error](err error) (E, bool) {
+	var typedErr E
+	if errors.As(err, &typedErr) {
+		return typedErr, true
 	}
 
-	var empty R
-
-	return empty, ErrNoMatchFound
+	return typedErr, false
 }
 
-func Case[E error, R any](fn MatchFunc[E, R]) ResultFunc[R] {
-	return func(err error) (R, error) {
-		var theErr E
-		if errors.As(err, &theErr) {
-			return fn(theErr)
-		}
-
-		var empty R
-
-		return empty, ErrNoMatchFound
+// ErrorTypeMatches - tests if given error is of the expected type (generic parameter)
+// and matches given predicate, returns the typed error and a boolean test result.
+func ErrorTypeMatches[E error](err error, pred ErrorPredicate[E]) (E, bool) {
+	typedErr, ok := ErrorType[E](err)
+	if !ok {
+		return typedErr, ok
 	}
+
+	if pred(typedErr) {
+		return typedErr, true
+	}
+
+	var empty E
+
+	return empty, false
 }
 
-func Default[R any](fn ResultFunc[R]) ResultFunc[R] {
-	return fn
+// ErrorMatches - tests if given error matches given predicate and returns the error with a boolean test result
+//
+//nolint:revive // this function is used to test error against the predicate and return it in case of success
+func ErrorMatches(err error, pred ErrorPredicate[error]) (error, bool) {
+	if pred(err) {
+		return err, true
+	}
+
+	var empty error
+
+	return empty, false
 }
 
-func CaseMatches[E error, R any](pred ErrPredicate[E], fn MatchFunc[E, R]) ResultFunc[R] {
-	return func(err error) (R, error) {
-		theErr, ok := pred.Test(err)
-		if ok {
-			return fn(theErr)
-		}
-
-		var empty R
-
-		return empty, ErrNoMatchFound
+func (p ErrorPredicate[E]) And(pred ErrorPredicate[E]) ErrorPredicate[E] {
+	return func(err E) bool {
+		return p(err) && pred(err)
 	}
 }
 
-func Type[E error]() ErrPredicate[E] {
-	return ErrPredicate[E]{
-		pred: func(err error) (E, bool) {
-			var theErr E
-			if errors.As(err, &theErr) {
-				return theErr, true
-			}
-
-			return theErr, false
-		},
-	}
-}
-
-type ErrPredicate[E error] struct {
-	pred ErrPredicateFunc[E]
-}
-
-func (p ErrPredicate[E]) Test(err error) (E, bool) {
-	return p.pred(err)
-}
-
-func (p ErrPredicate[E]) And(pred ErrPredicateFunc[E]) ErrPredicate[E] {
-	return ErrPredicate[E]{
-		pred: func(err error) (E, bool) {
-			theErr, ok := p.pred(err)
-			if !ok {
-				return theErr, false
-			}
-
-			return pred(err)
-		},
-	}
-}
-
-func (p ErrPredicate[E]) Or(pred ErrPredicateFunc[E]) ErrPredicate[E] {
-	return ErrPredicate[E]{
-		pred: func(err error) (E, bool) {
-			theErr, ok := p.pred(err)
-			if ok {
-				return theErr, true
-			}
-
-			return pred(err)
-		},
+func (p ErrorPredicate[E]) Or(pred ErrorPredicate[E]) ErrorPredicate[E] {
+	return func(err E) bool {
+		return p(err) || pred(err)
 	}
 }

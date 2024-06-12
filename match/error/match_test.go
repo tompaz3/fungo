@@ -1,292 +1,121 @@
-package errmatch_test
+package match_test
 
 import (
-	"errors"
 	"fmt"
+	match "github.com/tompaz3/fungo/match/error"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	errmatch "github.com/tompaz3/fungo/match/error"
 )
 
-var errTestError = errors.New("test error")
+var _ = g.Describe("ErrorType", func() {
+	receivedErr := PaymentGatewayRejectedError{
+		ReasonCode:    "100",
+		ReasonMessage: "Payment rejected",
+	}
 
-var _ = g.Describe("Switch", func() {
-	g.Describe("Case", func() {
-		receivedErr := PaymentGatewayRejectedError{
-			ReasonCode:    "100",
-			ReasonMessage: "Payment rejected",
-		}
+	g.When("error is of the expected type", func() {
+		g.It("should return the typed error and true", func() {
+			typedErr, ok := match.ErrorType[PaymentGatewayRejectedError](receivedErr)
+			o.Expect(ok).To(o.BeTrue())
+			o.Expect(typedErr).To(o.Equal(receivedErr))
+		})
+	})
 
-		g.When("error matches first error type", func() {
-			g.Context("and matched function returns value", func() {
-				g.It("should retrieve value", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ PaymentGatewayRejectedError) (int, error) {
-							executedMethods = append(executedMethods, "PaymentGatewayRejectedError")
+	g.When("error is of a different type", func() {
+		g.It("should not match error", func() {
+			typedErr, ok := match.ErrorType[InsufficientFundsError](receivedErr)
+			o.Expect(ok).To(o.BeFalse())
+			o.Expect(typedErr).To(o.Equal(InsufficientFundsError{}))
+		})
+	})
+})
 
-							return 1, nil
-						}),
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
+var _ = g.Describe("ErrorTypeMatches", func() {
+	receivedErr := PaymentGatewayRejectedError{
+		ReasonCode:    "100",
+		ReasonMessage: "Payment rejected",
+	}
 
-							return 2, nil
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 3, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 4, nil
-						}),
-					)
-
-					o.Expect(res).To(o.Equal(1))
-					o.Expect(err).ShouldNot(o.HaveOccurred())
-					o.Expect(executedMethods).To(o.HaveExactElements("PaymentGatewayRejectedError"))
-				})
-			})
-
-			g.Context("and matched function returns error", func() {
-				g.It("should retrieve error", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ PaymentGatewayRejectedError) (int, error) {
-							executedMethods = append(executedMethods, "PaymentGatewayRejectedError")
-
-							return 0, errTestError
-						}),
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
-
-							return 1, nil
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 2, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 3, nil
-						}),
-					)
-
-					o.Expect(res).To(o.BeZero())
-					o.Expect(err).Should(o.HaveOccurred())
-					o.Expect(err).To(o.Equal(errTestError))
-					o.Expect(executedMethods).To(o.HaveExactElements("PaymentGatewayRejectedError"))
-				})
+	g.When("error is of expected type", func() {
+		g.Describe("and matches the predicate", func() {
+			g.It("should return the typed error and true", func() {
+				typedErr, ok := match.ErrorTypeMatches[PaymentGatewayRejectedError](
+					receivedErr,
+					func(err PaymentGatewayRejectedError) bool {
+						return err.ReasonCode == "100"
+					},
+				)
+				o.Expect(ok).To(o.BeTrue())
+				o.Expect(typedErr).To(o.Equal(receivedErr))
 			})
 		})
-
-		g.When("error matches middle error type", func() {
-			g.Context("and matched function returns value", func() {
-				g.It("should retrieve value", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
-
-							return 1, nil
-						}),
-						errmatch.Case(func(_ PaymentGatewayRejectedError) (int, error) {
-							executedMethods = append(executedMethods, "PaymentGatewayRejectedError")
-
-							return 2, nil
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 3, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 4, nil
-						}),
-					)
-
-					o.Expect(res).To(o.Equal(2))
-					o.Expect(err).ShouldNot(o.HaveOccurred())
-					o.Expect(executedMethods).To(o.HaveExactElements("PaymentGatewayRejectedError"))
-				})
-			})
-
-			g.Context("and matched function returns error", func() {
-				g.It("should retrieve error", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
-
-							return 1, nil
-						}),
-						errmatch.Case(func(_ PaymentGatewayRejectedError) (int, error) {
-							executedMethods = append(executedMethods, "PaymentGatewayRejectedError")
-
-							return 0, errTestError
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 3, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 4, nil
-						}),
-					)
-
-					o.Expect(res).To(o.BeZero())
-					o.Expect(err).Should(o.HaveOccurred())
-					o.Expect(err).To(o.Equal(errTestError))
-					o.Expect(executedMethods).To(o.HaveExactElements("PaymentGatewayRejectedError"))
-				})
+		g.Describe("and doesn't match the predicate", func() {
+			g.It("should return the typed error and true", func() {
+				typedErr, ok := match.ErrorTypeMatches[PaymentGatewayRejectedError](
+					receivedErr,
+					func(err PaymentGatewayRejectedError) bool {
+						return err.ReasonCode == "200"
+					},
+				)
+				o.Expect(ok).To(o.BeFalse())
+				o.Expect(typedErr).To(o.Equal(PaymentGatewayRejectedError{}))
 			})
 		})
+	})
 
-		g.When("error matches last error type", func() {
-			g.Context("and matched function returns value", func() {
-				g.It("should retrieve value", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
+	g.When("error is of a different type", func() {
+		g.Describe("and matches the predicate", func() {
+			g.It("should not match and do not invoke the predicate", func() {
+				predicateExecuted := false
+				typedErr, ok := match.ErrorTypeMatches[InsufficientFundsError](receivedErr, func(_ InsufficientFundsError) bool {
+					predicateExecuted = true
 
-							return 1, nil
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 2, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 3, nil
-						}),
-						errmatch.Case(func(_ PaymentGatewayRejectedError) (int, error) {
-							executedMethods = append(executedMethods, "PaymentGatewayRejectedError")
-
-							return 4, nil
-						}),
-					)
-
-					o.Expect(res).To(o.Equal(4))
-					o.Expect(err).ShouldNot(o.HaveOccurred())
-					o.Expect(executedMethods).To(o.HaveExactElements("PaymentGatewayRejectedError"))
+					return true
 				})
-			})
-
-			g.Context("and matched function returns error", func() {
-				g.It("should retrieve error", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
-
-							return 1, nil
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 2, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 3, nil
-						}),
-						errmatch.Case(func(_ PaymentGatewayRejectedError) (int, error) {
-							executedMethods = append(executedMethods, "PaymentGatewayRejectedError")
-
-							return 0, errTestError
-						}),
-					)
-
-					o.Expect(res).To(o.BeZero())
-					o.Expect(err).Should(o.HaveOccurred())
-					o.Expect(err).To(o.Equal(errTestError))
-					o.Expect(executedMethods).To(o.HaveExactElements("PaymentGatewayRejectedError"))
-				})
+				o.Expect(predicateExecuted).To(o.BeFalse())
+				o.Expect(ok).To(o.BeFalse())
+				o.Expect(typedErr).To(o.Equal(InsufficientFundsError{}))
 			})
 		})
-
-		g.When("no match found", func() {
-			g.Context("and no default case", func() {
-				g.It("should return error", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
-
-							return 1, nil
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 2, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 3, nil
-						}),
-					)
-
-					o.Expect(res).To(o.BeZero())
-					o.Expect(err).Should(o.HaveOccurred())
-					o.Expect(err).To(o.Equal(errmatch.ErrNoMatchFound))
-					o.Expect(executedMethods).To(o.BeEmpty())
+		g.Describe("and doesn't match the predicate", func() {
+			g.It("should not match and do not invoke the predicate", func() {
+				predicateExecuted := false
+				typedErr, ok := match.ErrorTypeMatches[InsufficientFundsError](receivedErr, func(_ InsufficientFundsError) bool {
+					predicateExecuted = true
+					return false
 				})
+				o.Expect(predicateExecuted).To(o.BeFalse())
+				o.Expect(ok).To(o.BeFalse())
+				o.Expect(typedErr).To(o.Equal(InsufficientFundsError{}))
 			})
+		})
+	})
+})
 
-			g.Context("and default case", func() {
-				g.It("should return result", func() {
-					executedMethods := make([]string, 0)
-					res, err := errmatch.Switch(
-						receivedErr,
-						errmatch.Case(func(_ InsufficientFundsError) (int, error) {
-							executedMethods = append(executedMethods, "InsufficientFundsError")
+var _ = g.Describe("ErrorMatches", func() {
+	receivedErr := PaymentGatewayRejectedError{
+		ReasonCode:    "100",
+		ReasonMessage: "Payment rejected",
+	}
 
-							return 1, nil
-						}),
-						errmatch.Case(func(_ ProductNotFoundError) (int, error) {
-							executedMethods = append(executedMethods, "ProductNotFoundError")
-
-							return 2, nil
-						}),
-						errmatch.Case(func(_ UnsupportedCurrencyError) (int, error) {
-							executedMethods = append(executedMethods, "UnsupportedCurrencyError")
-
-							return 3, nil
-						}),
-						errmatch.Default(func(_ error) (int, error) {
-							executedMethods = append(executedMethods, "Default")
-
-							return 4, nil
-						}),
-					)
-
-					o.Expect(res).To(o.Equal(4))
-					o.Expect(err).ShouldNot(o.HaveOccurred())
-					o.Expect(executedMethods).To(o.HaveExactElements("Default"))
-				})
+	g.When("error matches the predicate", func() {
+		g.It("should return the error and true", func() {
+			matchedErr, ok := match.ErrorMatches(receivedErr, func(err error) bool {
+				return err.Error() == `payment gateway rejected with code "100" and message "Payment rejected"`
 			})
+			o.Expect(ok).To(o.BeTrue())
+			o.Expect(matchedErr).To(o.Equal(receivedErr))
+		})
+	})
+
+	g.When("error doesn't match the predicate", func() {
+		g.It("should return the error and false", func() {
+			matchedErr, ok := match.ErrorMatches(receivedErr, func(err error) bool {
+				return err.Error() == `payment gateway rejected with code "200" and message "Payment rejected"`
+			})
+			o.Expect(ok).To(o.BeFalse())
+			o.Expect(matchedErr).To(o.BeZero())
 		})
 	})
 })
