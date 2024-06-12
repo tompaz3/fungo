@@ -10,8 +10,8 @@ This package was created to enable an easier way to match errors in Go.
 
 It provides 2 ways to work with matching Go errors:
 
-* link:https://github.com/tompaz3/fungo/tree/main/match/error[] - with simple free functions to work with errors
-* link:https://github.com/tompaz3/fungo/tree/main/match/error/patternmatch[] [experimental] - with `Switch` - `Case` matching helpers and rules.
+* link:https://github.com/tompaz3/fungo/tree/main/match/error[match/error] - with simple free functions to work with errors
+* link:https://github.com/tompaz3/fungo/tree/main/match/error/patternmatch[match/error/patternmatch] [experimental] - with `Switch` - `Case` matching helpers and rules.
 
 [#error_package]
 == error
