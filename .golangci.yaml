@@ -35,6 +35,8 @@ linters-settings:
     settings:
       hugeParam:
         sizeThreshold: 1024 # in bytes (default is 80)
+  nlreturn:
+    block-size: 4
   tagliatelle:
     # Check the struct tag name case.
     case:
