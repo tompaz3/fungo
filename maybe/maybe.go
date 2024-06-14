@@ -1,34 +1,119 @@
 package maybe
 
-import "errors"
+import (
+	"errors"
+	"reflect"
+)
 
-type Maybe[T any] interface {
-	sealedMaybe()
+var ErrEmptyMaybe = errors.New("empty maybe")
 
-	IsDefined() bool
-	IsEmpty() bool
-
-	Get() (T, error)
-	MustGet() T
-	OrElse(other T) T
-	OrElseGet(other func() T) T
-	OrElseTryGet(other func() (T, error)) (T, error)
+type Maybe[T any] struct {
+	defined bool
+	value   T
 }
 
-func Map[T, U any](mb Maybe[T], fn func(T) U) Maybe[U] {
+//nolint:unused // sealed interface
+func (m *Maybe[T]) sealedMaybe() {}
+
+func (m *Maybe[T]) IsDefined() bool {
+	return !m.IsEmpty()
+}
+
+func (m *Maybe[T]) IsEmpty() bool {
+	return isNil(m) || !m.defined
+}
+
+func (m *Maybe[T]) Get() (T, error) {
+	if m.IsEmpty() {
+		var zero T
+		return zero, ErrEmptyMaybe
+	}
+
+	return m.value, nil
+}
+
+func (m *Maybe[T]) OrZero() T {
+	if m.IsEmpty() {
+		var zero T
+		return zero
+	}
+
+	return m.value
+}
+
+func (m *Maybe[T]) OrElse(other T) T {
+	if m.IsEmpty() {
+		return other
+	}
+
+	return m.value
+}
+
+func (m *Maybe[T]) OrElseGet(other func() T) T {
+	if m.IsEmpty() {
+		return other()
+	}
+
+	return m.value
+}
+
+func (m *Maybe[T]) OrElseTryGet(other func() (T, error)) (T, error) {
+	if m.IsEmpty() {
+		return other()
+	}
+
+	return m.value, nil
+}
+
+func (m *Maybe[T]) Filter(pred func(T) bool) *Maybe[T] {
+	if m.IsEmpty() || !pred(m.OrZero()) {
+		return None[T]()
+	}
+	return m
+}
+func (m *Maybe[T]) Map(fn func(T) T) *Maybe[T] {
+	if m.IsEmpty() {
+		return m
+	}
+	return Some(fn(m.OrZero()))
+}
+func (m *Maybe[T]) FlatMap(fn func(T) *Maybe[T]) *Maybe[T] {
+	if m.IsEmpty() {
+		return m
+	}
+	return fn(m.OrZero())
+}
+
+func None[T any]() *Maybe[T] {
+	return &Maybe[T]{}
+}
+
+func Some[T any](value T) *Maybe[T] {
+	return &Maybe[T]{defined: true, value: value}
+}
+
+func OfNillable[T any](value T) *Maybe[T] {
+	if isNil(value) {
+		return None[T]()
+	}
+
+	return Some(value)
+}
+
+func Map[T, U any](mb *Maybe[T], fn func(T) U) *Maybe[U] {
 	if mb.IsEmpty() {
 		return None[U]()
 	}
 
-	return Some(fn(mb.MustGet()))
+	return Some(fn(mb.OrZero()))
 }
 
-func TryMap[T, U any](mb Maybe[T], fn func(T) (U, error)) (Maybe[U], error) {
+func TryMap[T, U any](mb *Maybe[T], fn func(T) (U, error)) (*Maybe[U], error) {
 	if mb.IsEmpty() {
 		return None[U](), nil
 	}
 
-	val, err := fn(mb.MustGet())
+	val, err := fn(mb.OrZero())
 	if err != nil {
 		return None[U](), err
 	}
@@ -36,103 +121,33 @@ func TryMap[T, U any](mb Maybe[T], fn func(T) (U, error)) (Maybe[U], error) {
 	return Some(val), nil
 }
 
-func FlatMap[T, U any](mb Maybe[T], fn func(T) Maybe[U]) Maybe[U] {
+func FlatMap[T, U any](mb *Maybe[T], fn func(T) *Maybe[U]) *Maybe[U] {
 	if mb.IsEmpty() {
 		return None[U]()
 	}
 
-	return fn(mb.MustGet())
+	return fn(mb.OrZero())
 }
 
-func TryFlatMap[T, U any](mb Maybe[T], fn func(T) (Maybe[U], error)) (Maybe[U], error) {
+func TryFlatMap[T, U any](mb *Maybe[T], fn func(T) (*Maybe[U], error)) (*Maybe[U], error) {
 	if mb.IsEmpty() {
 		return None[U](), nil
 	}
 
-	return fn(mb.MustGet())
+	return fn(mb.OrZero())
 }
 
-var ErrEmptyMaybe = errors.New("empty maybe")
+func isNil(value any) bool {
+	if value == nil {
+		return true
+	}
 
-func None[T any]() Maybe[T] {
-	return none[T]{}
-}
-
-func Some[T any](value T) Maybe[T] {
-	return some[T]{value: value}
-}
-
-type none[T any] struct{}
-
-type some[T any] struct {
-	value T
-}
-
-var (
-	_ Maybe[any] = (*none[any])(nil)
-	_ Maybe[any] = (*some[any])(nil)
-)
-
-//nolint:unused // This is a sealed interface
-func (none[T]) sealedMaybe() {}
-
-//nolint:unused // This is a sealed interface
-func (some[T]) sealedMaybe() {}
-
-func (none[T]) Get() (T, error) {
-	var empty T
-
-	return empty, ErrEmptyMaybe
-}
-
-func (none[T]) IsDefined() bool {
-	return false
-}
-
-func (s some[T]) IsDefined() bool {
-	return true
-}
-
-func (none[T]) IsEmpty() bool {
-	return true
-}
-
-func (s some[T]) IsEmpty() bool {
-	return false
-}
-
-func (s some[T]) Get() (T, error) {
-	return s.value, nil
-}
-
-func (none[T]) MustGet() T {
-	panic(ErrEmptyMaybe)
-}
-
-func (s some[T]) MustGet() T {
-	return s.value
-}
-
-func (none[T]) OrElse(other T) T {
-	return other
-}
-
-func (s some[T]) OrElse(_ T) T {
-	return s.value
-}
-
-func (none[T]) OrElseGet(other func() T) T {
-	return other()
-}
-
-func (s some[T]) OrElseGet(_ func() T) T {
-	return s.value
-}
-
-func (none[T]) OrElseTryGet(other func() (T, error)) (T, error) {
-	return other()
-}
-
-func (s some[T]) OrElseTryGet(_ func() (T, error)) (T, error) {
-	return s.value, nil
+	tp := reflect.TypeOf(value)
+	//nolint:exhaustive // we are only interested in the following types and default handles the rest
+	switch tp.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		return reflect.ValueOf(value).IsNil()
+	default:
+		return false
+	}
 }
