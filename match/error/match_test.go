@@ -1,10 +1,9 @@
 package match_test
 
 import (
-	match "github.com/tompaz3/fungo/match/error"
-
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	match "github.com/tompaz3/fungo/match/error"
 )
 
 var _ = g.Describe("ErrorType", func() {

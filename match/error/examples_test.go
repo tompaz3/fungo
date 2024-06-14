@@ -2,10 +2,11 @@ package match_test
 
 import (
 	"fmt"
+	"net/http"
+
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	match "github.com/tompaz3/fungo/match/error"
-	"net/http"
 )
 
 var _ = g.Describe("ErrorMatches", func() {

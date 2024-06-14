@@ -71,12 +71,14 @@ func (m *Maybe[T]) Filter(pred func(T) bool) *Maybe[T] {
 	}
 	return m
 }
+
 func (m *Maybe[T]) Map(fn func(T) T) *Maybe[T] {
 	if m.IsEmpty() {
 		return m
 	}
 	return Some(fn(m.OrZero()))
 }
+
 func (m *Maybe[T]) FlatMap(fn func(T) *Maybe[T]) *Maybe[T] {
 	if m.IsEmpty() {
 		return m
