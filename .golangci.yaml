@@ -35,8 +35,6 @@ linters-settings:
     settings:
       hugeParam:
         sizeThreshold: 1024 # in bytes (default is 80)
-  nlreturn:
-    block-size: 4
   tagliatelle:
     # Check the struct tag name case.
     case:
@@ -146,7 +144,6 @@ linters:
     - nestif # Reports deeply nested if statements.
     - nilerr # Finds the code that returns nil even if it checks that the error is not nil.
     - nilnil # Checks that there is no simultaneous return of nil error and an invalid value.
-    - nlreturn # Nlreturn checks for a new line before return and branch statements to increase code clarity.
     - noctx # Finds sending http request without context.Context.
     - nolintlint # Reports ill-formed or insufficient nolint directives.
     - nonamedreturns # Reports all named returns.
