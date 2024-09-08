@@ -1,403 +1,781 @@
 package maybe_test
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/tompaz3/fungo/maybe"
-
-	g "github.com/onsi/ginkgo/v2"
-	o "github.com/onsi/gomega"
 )
 
-var errTestError = errors.New("test error")
+func Test_Maybe_IsDefined(t *testing.T) {
+	t.Parallel()
 
-var _ = g.Describe("Maybe", func() {
-	g.Describe("IsDefined", func() {
-		g.When("some value present", func() {
-			g.It("should return true", func() {
-				o.Expect(maybe.Some(1).IsDefined()).To(o.BeTrue())
-			})
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.Some(1)
+
+		assert.True(t, res.IsDefined())
+	})
+
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.None[int]()
+
+		assert.False(t, res.IsDefined())
+	})
+}
+
+func Test_Maybe_IsEmpty(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.Some(1)
+
+		assert.False(t, res.IsEmpty())
+	})
+
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.None[int]()
+
+		assert.True(t, res.IsEmpty())
+	})
+}
+
+func Test_Maybe_Get(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res, err := maybe.Some(1).Get()
+
+		assert.Equal(t, 1, res)
+		assert.NoError(t, err)
+	})
+
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res, err := maybe.None[int]().Get()
+
+		assert.Zero(t, res)
+		assert.Error(t, err)
+		assert.Equal(t, maybe.ErrEmptyMaybe, err)
+	})
+}
+
+func Test_Maybe_OrZero(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.Some(1).OrZero()
+
+		assert.Equal(t, 1, res)
+	})
+
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.None[int]().OrZero()
+
+		assert.Zero(t, res)
+	})
+}
+
+func Test_Maybe_OrElse(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.Some(1).OrElse(2)
+
+		assert.Equal(t, 1, res)
+	})
+
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		res := maybe.None[int]().OrElse(2)
+
+		assert.Equal(t, 2, res)
+	})
+}
+
+func Test_Maybe_OrElseGet(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		elseEvaluated := false
+
+		res := maybe.Some(1).OrElseGet(func() int {
+			elseEvaluated = false
+			return 2
 		})
 
-		g.When("no value present", func() {
-			g.It("should return false", func() {
-				o.Expect(maybe.None[int]().IsDefined()).To(o.BeFalse())
+		assert.Equal(t, 1, res)
+		assert.False(t, elseEvaluated)
+	})
+
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		elseEvaluated := false
+
+		res := maybe.None[int]().OrElseGet(func() int {
+			elseEvaluated = true
+			return 2
+		})
+
+		assert.Equal(t, 2, res)
+		assert.True(t, elseEvaluated)
+	})
+}
+
+func Test_Maybe_OrElseTryGet(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		t.Run(`and orElseTryGet returns value`, func(t *testing.T) {
+			t.Parallel()
+
+			elseEvaluated := false
+
+			res, err := maybe.Some(1).OrElseTryGet(func() (int, error) {
+				elseEvaluated = false
+				return 2, nil
 			})
+
+			assert.Equal(t, 1, res)
+			assert.NoError(t, err)
+			assert.False(t, elseEvaluated)
+		})
+
+		t.Run(`and orElseTryGet returns error`, func(t *testing.T) {
+			t.Parallel()
+
+			elseEvaluated := false
+
+			res, err := maybe.Some(1).OrElseTryGet(func() (int, error) {
+				elseEvaluated = false
+				return 2, assert.AnError
+			})
+
+			assert.Equal(t, 1, res)
+			assert.NoError(t, err)
+			assert.False(t, elseEvaluated)
 		})
 	})
 
-	g.Describe("IsEmpty", func() {
-		g.When("some value present", func() {
-			g.It("should return false", func() {
-				o.Expect(maybe.Some(1).IsEmpty()).To(o.BeFalse())
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		t.Run(`and orElseTryGet returns value`, func(t *testing.T) {
+			t.Parallel()
+
+			elseEvaluated := false
+
+			res, err := maybe.None[int]().OrElseTryGet(func() (int, error) {
+				elseEvaluated = true
+				return 2, nil
 			})
+
+			assert.Equal(t, 2, res)
+			assert.NoError(t, err)
+			assert.True(t, elseEvaluated)
 		})
 
-		g.When("no value present", func() {
-			g.It("should return true", func() {
-				o.Expect(maybe.None[int]().IsEmpty()).To(o.BeTrue())
+		t.Run(`and orElseTryGet returns error`, func(t *testing.T) {
+			t.Parallel()
+
+			elseEvaluated := false
+
+			res, err := maybe.None[int]().OrElseTryGet(func() (int, error) {
+				elseEvaluated = true
+				return 2, assert.AnError
 			})
+
+			assert.Equal(t, 2, res)
+			assert.Error(t, err)
+			assert.Equal(t, assert.AnError, err)
+			assert.True(t, elseEvaluated)
 		})
 	})
+}
 
-	g.Describe("Get", func() {
-		g.When("some value present", func() {
-			g.It("should return the value", func() {
-				value, err := maybe.Some(1).Get()
-				o.Expect(value).To(o.Equal(1))
-				o.Expect(err).ShouldNot(o.HaveOccurred())
-			})
-		})
+func Test_Maybe_ZeroValue(t *testing.T) {
+	t.Parallel()
 
-		g.When("no value present", func() {
-			g.It("should return an error", func() {
-				value, err := maybe.None[int]().Get()
-				o.Expect(value).To(o.Equal(0))
-				o.Expect(err).Should(o.HaveOccurred())
-				o.Expect(err).Should(o.Equal(maybe.ErrEmptyMaybe))
-			})
-		})
+	t.Run(`zero value`, func(t *testing.T) {
+		t.Parallel()
+
+		var res maybe.Maybe[int]
+
+		assert.False(t, res.IsDefined())
+		assert.True(t, res.IsEmpty())
 	})
 
-	g.Describe("OrZero", func() {
-		g.When("some value present", func() {
-			g.It("should return the value", func() {
-				value := maybe.Some(1).OrZero()
-				o.Expect(value).To(o.Equal(1))
-			})
-		})
+	t.Run(`nil pointer`, func(t *testing.T) {
+		t.Parallel()
 
-		g.When("when no value present", func() {
-			g.It("should panic", func() {
-				value := maybe.None[int]().OrZero()
-				o.Expect(value).To(o.BeZero())
-			})
-		})
+		var res *maybe.Maybe[int]
+
+		assert.False(t, res.IsDefined())
+		assert.True(t, res.IsEmpty())
+	})
+}
+
+func Test_Map(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) string {
+			mapperEvaluated = true
+			return strconv.Itoa(i)
+		}
+		mb := maybe.Some(1)
+
+		res := maybe.Map(mb, mapper)
+
+		assert.True(t, res.IsDefined())
+		assert.True(t, mapperEvaluated)
+		assert.Equal(t, "1", res.OrZero())
 	})
 
-	g.Describe("OrElse", func() {
-		g.When("some value present", func() {
-			g.It("should return the value", func() {
-				value := maybe.Some(1).OrElse(2)
-				o.Expect(value).To(o.Equal(1))
-			})
-		})
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
 
-		g.When("when no value present", func() {
-			g.It("should return the other value", func() {
-				value := maybe.None[int]().OrElse(2)
-				o.Expect(value).To(o.Equal(2))
-			})
-		})
+		mapperEvaluated := false
+		mapper := func(i int) string {
+			mapperEvaluated = true
+			return strconv.Itoa(i)
+		}
+		mb := maybe.None[int]()
+
+		res := maybe.Map(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.False(t, mapperEvaluated)
+	})
+}
+
+func Test_TryMap_Some(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`mapping returns value`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) (string, error) {
+			mapperEvaluated = true
+			return strconv.Itoa(i), nil
+		}
+		mb := maybe.Some(1)
+
+		res, err := maybe.TryMap(mb, mapper)
+
+		assert.True(t, res.IsDefined())
+		assert.NoError(t, err)
+		assert.True(t, mapperEvaluated)
 	})
 
-	g.Describe("OrElseGet", func() {
-		g.When("some value present", func() {
-			g.It("should return the value", func() {
-				value := maybe.Some(1).OrElseGet(func() int { return 2 })
-				o.Expect(value).To(o.Equal(1))
-			})
-		})
+	t.Run(`mapping returns error`, func(t *testing.T) {
+		t.Parallel()
 
-		g.When("no value present", func() {
-			g.It("should return the other value", func() {
-				value := maybe.None[int]().OrElseGet(func() int { return 2 })
-				o.Expect(value).To(o.Equal(2))
-			})
-		})
+		mapperEvaluated := false
+		mapper := func(_ int) (string, error) {
+			mapperEvaluated = true
+			return "", assert.AnError
+		}
+		mb := maybe.Some(1)
+
+		res, err := maybe.TryMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.Error(t, err)
+		assert.Equal(t, assert.AnError, err)
+		assert.True(t, mapperEvaluated)
+	})
+}
+
+func Test_TryMap_None(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`mapping returns value`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) (string, error) {
+			mapperEvaluated = true
+			return strconv.Itoa(i), nil
+		}
+		mb := maybe.None[int]()
+
+		res, err := maybe.TryMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.NoError(t, err)
+		assert.False(t, mapperEvaluated)
 	})
 
-	g.Describe("OrElseTryGet", func() {
-		g.When("some value present", func() {
-			g.Context("and other function returns value", func() {
-				g.It("should return the value", func() {
-					value, err := maybe.Some(1).
-						OrElseTryGet(func() (int, error) { return 2, nil })
-					o.Expect(value).To(o.Equal(1))
-					o.Expect(err).ShouldNot(o.HaveOccurred())
-				})
-			})
+	t.Run(`mapping returns error`, func(t *testing.T) {
+		t.Parallel()
 
-			g.Context("and other function returns error", func() {
-				g.It("should return the value", func() {
-					value, err := maybe.Some(1).
-						OrElseTryGet(func() (int, error) { return 0, errTestError })
-					o.Expect(value).To(o.Equal(1))
-					o.Expect(err).ShouldNot(o.HaveOccurred())
-				})
-			})
-		})
+		mapperEvaluated := false
+		mapper := func(_ int) (string, error) {
+			mapperEvaluated = true
+			return "", assert.AnError
+		}
+		mb := maybe.None[int]()
 
-		g.When("no value present", func() {
-			g.Context("and other function returns value", func() {
-				g.It("should return the other value", func() {
-					value, err := maybe.None[int]().
-						OrElseTryGet(func() (int, error) { return 2, nil })
-					o.Expect(value).To(o.Equal(2))
-					o.Expect(err).ShouldNot(o.HaveOccurred())
-				})
-			})
+		res, err := maybe.TryMap(mb, mapper)
 
-			g.Context("and other function returns error", func() {
-				g.It("should return the other error", func() {
-					value, err := maybe.None[int]().
-						OrElseTryGet(func() (int, error) { return 0, errTestError })
-					o.Expect(value).To(o.BeZero())
-					o.Expect(err).Should(o.HaveOccurred())
-					o.Expect(err).To(o.Equal(errTestError))
-				})
-			})
-		})
+		assert.True(t, res.IsEmpty())
+		assert.NoError(t, err)
+		assert.False(t, mapperEvaluated)
 	})
-})
+}
 
-var _ = g.Describe("MaybeZeroValue", func() {
-	g.When("maybe is zero", func() {
-		g.It("should follow None contract", func() {
-			var mb maybe.Maybe[int]
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-			o.Expect(mb.IsDefined()).To(o.BeFalse())
-		})
-	})
-	g.When("maybe pointer is nil", func() {
-		g.It("should follow None contract", func() {
-			var mb *maybe.Maybe[int]
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-			o.Expect(mb.IsDefined()).To(o.BeFalse())
-		})
-	})
-})
+func Test_FlatMap_Some(t *testing.T) {
+	t.Parallel()
 
-var _ = g.Describe("Map", func() {
-	g.When("some value present", func() {
-		g.It("should return the mapped value", func() {
-			mb := maybe.Some(1)
-			mapped := maybe.Map(mb, strconv.Itoa)
-			o.Expect(mapped.IsDefined()).To(o.BeTrue())
-			o.Expect(mapped.OrZero()).To(o.Equal("1"))
-		})
+	t.Run(`mapper returned some`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) *maybe.Maybe[string] {
+			mapperEvaluated = true
+			return maybe.Some(strconv.Itoa(i))
+		}
+		mb := maybe.Some(1)
+
+		res := maybe.FlatMap(mb, mapper)
+
+		assert.True(t, res.IsDefined())
+		assert.True(t, mapperEvaluated)
+		assert.Equal(t, "1", res.OrZero())
 	})
 
-	g.When("no value present", func() {
-		g.It("should return None", func() {
-			mb := maybe.None[int]()
-			mapped := maybe.Map(mb, strconv.Itoa)
-			o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-		})
+	t.Run(`mapper returned none`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) *maybe.Maybe[string] {
+			mapperEvaluated = true
+			return maybe.None[string]()
+		}
+		mb := maybe.Some(1)
+
+		res := maybe.FlatMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.True(t, mapperEvaluated)
 	})
-})
+}
 
-var _ = g.Describe("TryMap", func() {
-	g.Describe("some value present", func() {
-		g.When("mapping function returns value", func() {
-			g.It("should return the mapped value", func() {
-				mb := maybe.Some(1)
-				mapped, err := maybe.TryMap(mb, func(it int) (string, error) {
-					return strconv.Itoa(it), nil
-				})
-				o.Expect(mapped.IsDefined()).To(o.BeTrue())
-				o.Expect(mapped.OrZero()).To(o.Equal("1"))
-				o.Expect(err).ShouldNot(o.HaveOccurred())
-			})
-		})
+func Test_FlatMap_None(t *testing.T) {
+	t.Parallel()
 
-		g.When("mapping function returns error", func() {
-			g.It("should return the error", func() {
-				mb := maybe.Some(1)
-				mapped, err := maybe.TryMap(mb, func(_ int) (string, error) {
-					return "", errTestError
-				})
-				o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-				o.Expect(err).Should(o.HaveOccurred())
-				o.Expect(err).To(o.Equal(errTestError))
-			})
-		})
-	})
+	t.Run(`mapper returned some`, func(t *testing.T) {
+		t.Parallel()
 
-	g.Describe("no value present", func() {
-		g.When("mapping function returns value", func() {
-			g.It("should return None", func() {
-				mb := maybe.None[int]()
-				mapped, err := maybe.TryMap(mb, func(it int) (string, error) {
-					return strconv.Itoa(it), nil
-				})
-				o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-				o.Expect(err).ShouldNot(o.HaveOccurred())
-			})
-		})
+		mapperEvaluated := false
+		mapper := func(i int) *maybe.Maybe[string] {
+			mapperEvaluated = true
+			return maybe.Some(strconv.Itoa(i))
+		}
+		mb := maybe.None[int]()
 
-		g.When("mapping function returns error", func() {
-			g.It("should return None", func() {
-				mb := maybe.None[int]()
-				mapped, err := maybe.TryMap(mb, func(_ int) (string, error) {
-					return "", errTestError
-				})
-				o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-				o.Expect(err).ShouldNot(o.HaveOccurred())
-			})
-		})
-	})
-})
+		res := maybe.FlatMap(mb, mapper)
 
-var _ = g.Describe("FlatMap", func() {
-	g.When("some value present", func() {
-		g.It("should return the mapped value", func() {
-			mb := maybe.Some(1)
-			mapped := maybe.FlatMap(mb, func(it int) *maybe.Maybe[string] {
-				return maybe.Some(strconv.Itoa(it))
-			})
-			o.Expect(mapped.IsDefined()).To(o.BeTrue())
-			o.Expect(mapped.OrZero()).To(o.Equal("1"))
-		})
+		assert.True(t, res.IsEmpty())
+		assert.False(t, mapperEvaluated)
 	})
 
-	g.When("no value present", func() {
-		g.It("should return None", func() {
-			mb := maybe.None[int]()
-			mapped := maybe.FlatMap(mb, func(it int) *maybe.Maybe[string] {
-				return maybe.Some(strconv.Itoa(it))
-			})
-			o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-		})
+	t.Run(`mapper returned none`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) *maybe.Maybe[string] {
+			mapperEvaluated = true
+			return maybe.None[string]()
+		}
+		mb := maybe.None[int]()
+
+		res := maybe.FlatMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.False(t, mapperEvaluated)
 	})
-})
+}
 
-var _ = g.Describe("TryFlatMap", func() {
-	g.Describe("some value present", func() {
-		g.When("mapping function returns value", func() {
-			g.It("should return the mapped value", func() {
-				mb := maybe.Some(1)
-				mapped, err := maybe.TryFlatMap(mb, func(it int) (*maybe.Maybe[string], error) {
-					return maybe.Some(strconv.Itoa(it)), nil
-				})
-				o.Expect(mapped.IsDefined()).To(o.BeTrue())
-				o.Expect(mapped.OrZero()).To(o.Equal("1"))
-				o.Expect(err).ShouldNot(o.HaveOccurred())
-			})
-		})
+func Test_FlatMap_MonadLaws(t *testing.T) {
+	t.Parallel()
+	t.Run("left identity", func(t *testing.T) {
+		t.Parallel()
 
-		g.When("mapping function returns error", func() {
-			g.It("should return the error", func() {
-				mb := maybe.Some(1)
-				mapped, err := maybe.TryFlatMap(mb, func(_ int) (*maybe.Maybe[string], error) {
-					return maybe.None[string](), errTestError
-				})
-				o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-				o.Expect(err).Should(o.HaveOccurred())
-				o.Expect(err).To(o.Equal(errTestError))
-			})
-		})
+		f := func(x int) *maybe.Maybe[string] {
+			return maybe.Some(fmt.Sprintf("number: %d", x))
+		}
+		value := 2
+		mb := maybe.Some(value)
+
+		lhs := maybe.FlatMap(mb, f)
+
+		rhs := f(value)
+
+		assert.Equal(t, lhs, rhs)
 	})
 
-	g.Describe("no value present", func() {
-		g.When("mapping function returns value", func() {
-			g.It("should return None", func() {
-				mb := maybe.None[int]()
-				mapped, err := maybe.TryFlatMap(mb, func(it int) (*maybe.Maybe[string], error) {
-					return maybe.Some(strconv.Itoa(it)), nil
-				})
-				o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-				o.Expect(err).ShouldNot(o.HaveOccurred())
-			})
-		})
+	t.Run("right identity", func(t *testing.T) {
+		t.Parallel()
 
-		g.When("mapping function returns error", func() {
-			g.It("should return None", func() {
-				mb := maybe.None[int]()
-				mapped, err := maybe.TryFlatMap(mb, func(_ int) (*maybe.Maybe[string], error) {
-					return maybe.None[string](), errTestError
-				})
-				o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-				o.Expect(err).ShouldNot(o.HaveOccurred())
-			})
-		})
-	})
-})
+		mb := maybe.Some("some: 2")
 
-var _ = g.Describe("Filter", func() {
-	g.Describe("some value present", func() {
-		g.When("predicate returns true", func() {
-			g.It("should return Some", func() {
-				mb := maybe.Some(1)
-				filtered := mb.Filter(func(i int) bool {
-					return i == 1
-				})
-				o.Expect(filtered.IsDefined()).To(o.BeTrue())
-				o.Expect(filtered.OrZero()).To(o.Equal(1))
-			})
-		})
+		lhs := maybe.FlatMap(mb, maybe.Some)
 
-		g.When("predicate returns false", func() {
-			g.It("should return None", func() {
-				mb := maybe.Some(1)
-				filtered := mb.Filter(func(i int) bool {
-					return i == 2
-				})
-				o.Expect(filtered.IsEmpty()).To(o.BeTrue())
-			})
-		})
+		rhs := mb
+
+		assert.Equal(t, lhs, rhs)
 	})
 
-	g.When("no value present", func() {
-		g.It("should return None", func() {
-			mb := maybe.None[int]()
-			predicateExecuted := false
-			filtered := mb.Filter(func(i int) bool {
-				predicateExecuted = true
-				return i == 1
-			})
-			o.Expect(filtered.IsEmpty()).To(o.BeTrue())
-			o.Expect(predicateExecuted).To(o.BeFalse())
-		})
-	})
-})
+	t.Run("associativity", func(t *testing.T) {
+		t.Parallel()
 
-var _ = g.Describe("maybe.Map", func() {
-	g.When("some value present", func() {
-		g.It("should return the mapped value", func() {
-			mb := maybe.Some(1)
-			mapped := mb.Map(func(i int) int {
-				return i * 2
-			})
-			o.Expect(mapped.IsDefined()).To(o.BeTrue())
-			o.Expect(mapped.OrZero()).To(o.Equal(2))
-		})
-	})
+		f := func(x int) *maybe.Maybe[string] {
+			return maybe.Some(fmt.Sprintf("some: %d", x))
+		}
+		g := func(s string) *maybe.Maybe[int] {
+			return maybe.Some(len(s))
+		}
 
-	g.When("no value present", func() {
-		g.It("should return None", func() {
-			mb := maybe.None[int]()
-			mapped := mb.Map(func(i int) int {
-				return i * 2
-			})
-			o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-		})
-	})
-})
+		mb := maybe.Some(22)
 
-var _ = g.Describe("maybe.FlatMap", func() {
-	g.When("some value present", func() {
-		g.It("should return the mapped value", func() {
-			mb := maybe.Some(1)
-			mapped := mb.FlatMap(func(it int) *maybe.Maybe[int] {
-				return maybe.Some(it * 2)
-			})
-			o.Expect(mapped.IsDefined()).To(o.BeTrue())
-			o.Expect(mapped.OrZero()).To(o.Equal(2))
+		lhs := maybe.FlatMap(maybe.FlatMap(mb, f), g)
+
+		rhs := maybe.FlatMap(mb, func(x int) *maybe.Maybe[int] {
+			return maybe.FlatMap(f(x), g)
 		})
+
+		assert.Equal(t, lhs, rhs)
+	})
+}
+
+func Test_TryFlatMap_Some(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`mapper returned some`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) (*maybe.Maybe[string], error) {
+			mapperEvaluated = true
+			return maybe.Some(strconv.Itoa(i)), nil
+		}
+		mb := maybe.Some(1)
+
+		res, err := maybe.TryFlatMap(mb, mapper)
+
+		assert.True(t, res.IsDefined())
+		assert.NoError(t, err)
+		assert.True(t, mapperEvaluated)
+		assert.Equal(t, "1", res.OrZero())
 	})
 
-	g.When("no value present", func() {
-		g.It("should return None", func() {
-			mb := maybe.None[int]()
-			mapped := mb.FlatMap(func(it int) *maybe.Maybe[int] {
-				return maybe.Some(it * 2)
-			})
-			o.Expect(mapped.IsEmpty()).To(o.BeTrue())
-		})
+	t.Run(`mapper returned none`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) (*maybe.Maybe[string], error) {
+			mapperEvaluated = true
+			return maybe.None[string](), nil
+		}
+		mb := maybe.Some(1)
+
+		res, err := maybe.TryFlatMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.NoError(t, err)
+		assert.True(t, mapperEvaluated)
 	})
-})
+
+	t.Run(`mapper returned error`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) (*maybe.Maybe[string], error) {
+			mapperEvaluated = true
+			return nil, assert.AnError
+		}
+		mb := maybe.Some(1)
+
+		res, err := maybe.TryFlatMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.Error(t, err)
+		assert.Equal(t, assert.AnError, err)
+		assert.True(t, mapperEvaluated)
+	})
+}
+
+func Test_TryFlatMap_None(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`mapper returned some`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) (*maybe.Maybe[string], error) {
+			mapperEvaluated = true
+			return maybe.Some(strconv.Itoa(i)), nil
+		}
+		mb := maybe.None[int]()
+
+		res, err := maybe.TryFlatMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.NoError(t, err)
+		assert.False(t, mapperEvaluated)
+	})
+
+	t.Run(`mapper returned none`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) (*maybe.Maybe[string], error) {
+			mapperEvaluated = true
+			return maybe.None[string](), nil
+		}
+		mb := maybe.None[int]()
+
+		res, err := maybe.TryFlatMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.NoError(t, err)
+		assert.False(t, mapperEvaluated)
+	})
+
+	t.Run(`mapper returned error`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) (*maybe.Maybe[string], error) {
+			mapperEvaluated = true
+			return nil, assert.AnError
+		}
+		mb := maybe.None[int]()
+
+		res, err := maybe.TryFlatMap(mb, mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.NoError(t, err)
+		assert.False(t, mapperEvaluated)
+	})
+}
+
+func Test_Filter_Some(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`predicate returns true`, func(t *testing.T) {
+		t.Parallel()
+
+		predicateEvaluated := false
+		predicate := func(_ int) bool {
+			predicateEvaluated = true
+			return true
+		}
+
+		mb := maybe.Some(1)
+
+		res := mb.Filter(predicate)
+
+		assert.True(t, res.IsDefined())
+		assert.True(t, predicateEvaluated)
+	})
+
+	t.Run(`predicate returns false`, func(t *testing.T) {
+		t.Parallel()
+
+		predicateEvaluated := false
+		predicate := func(_ int) bool {
+			predicateEvaluated = true
+			return false
+		}
+
+		mb := maybe.Some(1)
+
+		res := mb.Filter(predicate)
+
+		assert.True(t, res.IsEmpty())
+		assert.True(t, predicateEvaluated)
+	})
+}
+
+func Test_Filter_None(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`predicate returns true`, func(t *testing.T) {
+		t.Parallel()
+
+		predicateEvaluated := false
+		predicate := func(_ int) bool {
+			predicateEvaluated = true
+			return true
+		}
+
+		mb := maybe.None[int]()
+
+		res := mb.Filter(predicate)
+
+		assert.True(t, res.IsEmpty())
+		assert.False(t, predicateEvaluated)
+	})
+
+	t.Run(`predicate returns false`, func(t *testing.T) {
+		t.Parallel()
+
+		predicateEvaluated := false
+		predicate := func(_ int) bool {
+			predicateEvaluated = true
+			return false
+		}
+
+		mb := maybe.None[int]()
+
+		res := mb.Filter(predicate)
+
+		assert.True(t, res.IsEmpty())
+		assert.False(t, predicateEvaluated)
+	})
+}
+
+func Test_Map_Receiver(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`some value present`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) int {
+			mapperEvaluated = true
+			return i * 2
+		}
+		mb := maybe.Some(1)
+
+		res := mb.Map(mapper)
+
+		assert.True(t, res.IsDefined())
+		assert.True(t, mapperEvaluated)
+		assert.Equal(t, 2, res.OrZero())
+	})
+
+	t.Run(`no value present`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) int {
+			mapperEvaluated = true
+			return i * 2
+		}
+		mb := maybe.None[int]()
+
+		res := mb.Map(mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.False(t, mapperEvaluated)
+	})
+}
+
+func Test_FlatMap_Receiver_Some(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`mapper returned some`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) *maybe.Maybe[int] {
+			mapperEvaluated = true
+			return maybe.Some(i * 2)
+		}
+		mb := maybe.Some(1)
+
+		res := mb.FlatMap(mapper)
+
+		assert.True(t, res.IsDefined())
+		assert.True(t, mapperEvaluated)
+		assert.Equal(t, 2, res.OrZero())
+	})
+
+	t.Run(`mapper returned none`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) *maybe.Maybe[int] {
+			mapperEvaluated = true
+			return maybe.None[int]()
+		}
+		mb := maybe.Some(1)
+
+		res := mb.FlatMap(mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.True(t, mapperEvaluated)
+	})
+}
+
+func Test_FlatMap_Receiver_None(t *testing.T) {
+	t.Parallel()
+
+	t.Run(`mapper returned some`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(i int) *maybe.Maybe[int] {
+			mapperEvaluated = true
+			return maybe.Some(i * 2)
+		}
+		mb := maybe.None[int]()
+
+		res := mb.FlatMap(mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.False(t, mapperEvaluated)
+	})
+
+	t.Run(`mapper returned none`, func(t *testing.T) {
+		t.Parallel()
+
+		mapperEvaluated := false
+		mapper := func(_ int) *maybe.Maybe[int] {
+			mapperEvaluated = true
+			return maybe.None[int]()
+		}
+		mb := maybe.None[int]()
+
+		res := mb.FlatMap(mapper)
+
+		assert.True(t, res.IsEmpty())
+		assert.False(t, mapperEvaluated)
+	})
+}
 
 type maybeTestInterface interface {
 	Do()
@@ -409,215 +787,41 @@ var _ maybeTestInterface = (*maybeTestStruct)(nil)
 
 func (m *maybeTestStruct) Do() {}
 
-var _ = g.Describe("OfNillable", func() {
-	g.When("non-nil value provided", func() {
-		g.It("should return Some", func() {
-			mb := maybe.OfNillable(1)
-			o.Expect(mb.IsDefined()).To(o.BeTrue())
+func Test_OfNillable(t *testing.T) {
+	t.Parallel()
+
+	fTest := func(t *testing.T, name string, value any, expectedDefined bool) {
+		t.Helper()
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			res := maybe.OfNillable(value)
+			assert.Equal(t, expectedDefined, res.IsDefined())
 		})
-	})
+	}
 
-	g.When("nil value provided", func() {
-		g.It("should return None", func() {
-			mb := maybe.OfNillable[*int](nil)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("nil channel", func() {
-		g.It("should return None", func() {
-			var ch chan int
-			mb := maybe.OfNillable(ch)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("non-nil channel", func() {
-		g.It("should return Some", func() {
-			ch := make(chan int)
-			mb := maybe.OfNillable(ch)
-			o.Expect(mb.IsDefined()).To(o.BeTrue())
-		})
-	})
-
-	g.When("nil function", func() {
-		g.It("should return None", func() {
-			var fn func()
-			mb := maybe.OfNillable(fn)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("non-nil function", func() {
-		g.It("should return Some", func() {
-			fn := func() {}
-			mb := maybe.OfNillable(fn)
-			o.Expect(mb.IsDefined()).To(o.BeTrue())
-		})
-	})
-
-	g.When("nil interface", func() {
-		g.It("should return None", func() {
-			var it maybeTestInterface
-			mb := maybe.OfNillable(it)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("nil typed interface", func() {
-		g.It("should return None", func() {
-			var str *maybeTestStruct
-			var it maybeTestInterface = str
-			mb := maybe.OfNillable(it)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("non-nil interface", func() {
-		g.It("should return Some", func() {
-			var it maybeTestInterface = &maybeTestStruct{}
-			mb := maybe.OfNillable(it)
-			o.Expect(mb.IsDefined()).To(o.BeTrue())
-		})
-	})
-
-	g.When("nil map", func() {
-		g.It("should return None", func() {
-			var m map[string]int
-			mb := maybe.OfNillable(m)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("non-nil map", func() {
-		g.It("should return Some", func() {
-			m := make(map[string]int)
-			mb := maybe.OfNillable(m)
-			o.Expect(mb.IsDefined()).To(o.BeTrue())
-		})
-	})
-
-	g.When("nil pointer", func() {
-		g.It("should return None", func() {
-			var ptr *int
-			mb := maybe.OfNillable(ptr)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("non-nil pointer", func() {
-		g.It("should return Some", func() {
-			var i int
-			mb := maybe.OfNillable(&i)
-			o.Expect(mb.IsDefined()).To(o.BeTrue())
-		})
-	})
-
-	g.When("nil slice", func() {
-		g.It("should return None", func() {
-			var sl []int
-			mb := maybe.OfNillable(sl)
-			o.Expect(mb.IsEmpty()).To(o.BeTrue())
-		})
-	})
-
-	g.When("non-nil slice", func() {
-		g.It("should return Some", func() {
-			sl := make([]int, 0)
-			mb := maybe.OfNillable(sl)
-			o.Expect(mb.IsDefined()).To(o.BeTrue())
-		})
-	})
-})
-
-var _ = g.Describe("MonadLaws", func() {
-	g.Describe("left identity", func() {
-		g.It("should hold", func() {
-			f := func(i int) *maybe.Maybe[string] {
-				return maybe.Some(strconv.Itoa(i))
-			}
-			value := 1
-
-			lhs := maybe.FlatMap(maybe.Some(value), f)
-			rhs := f(value)
-
-			o.Expect(lhs).To(o.Equal(rhs))
-		})
-	})
-
-	g.Describe("right identity", func() {
-		g.It("should hold", func() {
-			mb := maybe.Some(1)
-
-			lhs := maybe.FlatMap(mb, maybe.Some[int])
-			rhs := mb
-
-			o.Expect(lhs).To(o.Equal(rhs))
-		})
-	})
-
-	g.Describe("associativity", func() {
-		g.It("should hold", func() {
-			f := func(i int) *maybe.Maybe[string] {
-				return maybe.Some(strconv.Itoa(i))
-			}
-			g := func(i string) *maybe.Maybe[int] {
-				return maybe.Some(len(i))
-			}
-			mb := maybe.Some(10)
-
-			lhs := maybe.FlatMap(maybe.FlatMap(mb, f), g)
-			rhs := maybe.FlatMap(mb, func(i int) *maybe.Maybe[int] {
-				return maybe.FlatMap(f(i), g)
-			})
-
-			o.Expect(lhs).To(o.Equal(rhs))
-		})
-	})
-})
-
-var _ = g.Describe("maybe.MonadLaws", func() {
-	g.Describe("left identity", func() {
-		g.It("should hold", func() {
-			f := func(i int) *maybe.Maybe[int] {
-				return maybe.Some(i * 2)
-			}
-			value := 1
-
-			lhs := maybe.Some(value).FlatMap(f)
-			rhs := f(value)
-
-			o.Expect(lhs).To(o.Equal(rhs))
-		})
-	})
-
-	g.Describe("right identity", func() {
-		g.It("should hold", func() {
-			mb := maybe.Some(1)
-
-			lhs := mb.FlatMap(maybe.Some[int])
-			rhs := mb
-
-			o.Expect(lhs).To(o.Equal(rhs))
-		})
-	})
-
-	g.Describe("associativity", func() {
-		g.It("should hold", func() {
-			f := func(i int) *maybe.Maybe[int] {
-				return maybe.Some(i * 2)
-			}
-			g := func(i int) *maybe.Maybe[int] {
-				return maybe.Some(i + 2)
-			}
-			mb := maybe.Some(1)
-
-			lhs := mb.FlatMap(f).FlatMap(g)
-			rhs := mb.FlatMap(func(i int) *maybe.Maybe[int] {
-				return f(i).FlatMap(g)
-			})
-
-			o.Expect(lhs).To(o.Equal(rhs))
-		})
-	})
-})
+	fTest(t, `non-nil value`, 1, true)
+	fTest(t, `nil value`, nil, false)
+	fTest(t, `non-nil channel`, make(chan int), true)
+	var ch chan int
+	fTest(t, `nil channel`, ch, false)
+	fTest(t, `non-nil function`, func() {}, true)
+	var fn func()
+	fTest(t, `nil function`, fn, false)
+	var nonNilInt maybeTestInterface = &maybeTestStruct{}
+	fTest(t, `non-nil interface`, nonNilInt, true)
+	var nilInt maybeTestInterface
+	fTest(t, `nil interface`, nilInt, false)
+	var nilStruct *maybeTestStruct
+	nilTypedInt := nilStruct
+	fTest(t, `nil typed interface`, nilTypedInt, false)
+	fTest(t, `non-nil map`, map[string]string{}, true)
+	var nilMap map[string]string
+	fTest(t, `nil map`, nilMap, false)
+	nonNilValue := 1
+	fTest(t, `non-nil pointer`, &nonNilValue, true)
+	var nilPointer *int
+	fTest(t, `nil pointer`, nilPointer, false)
+	fTest(t, `non-nil slice`, make([]int, 0), true)
+	var nilSlice []int
+	fTest(t, `nil slice`, nilSlice, false)
+}
