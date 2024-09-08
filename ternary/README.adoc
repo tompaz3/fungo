@@ -1,0 +1,59 @@
+= Ternary
+:sectnums:
+:sectnumlevels: 5
+:toc: left
+:toclevels: 5
+:source-highlighter: rouge
+:icons: font
+
+This package provides a simple ternary expression implementation.
+
+[#overview]
+== Overview
+
+Package provides a ternary expression implementation in fluent builder style.
+
+It allows to evaluate all the expressions (condition, then, else) both eagerly and lazily (wrapping expressions into functions).
+All lazy expressions are evaluated when `Else` or `ElseF` method is called.
+
+[#overview-avaialble_methods]
+=== Available methods
+
+* `ternary.If[T any](bool)` - initiates ternary creation with eagerly evaluated condition.
+* `ternary.IfF[T any](func() bool)` - initiates ternary creation with lazily evaluated condition (invoked when `Else` or `ElseF` method is called).
+* `Then(value)` - provides value to be returned when condition is `true`.
+* `ThenF(func() value)` - provides function to be invoked when condition is `true` during the evaluation.
+* `Else(value)` - provides value to be returned when condition is `false`.
+* `ElseF(func() value)` - provides function to be invoked when condition is `false` during the evaluation.
+
+[#overview-examples]
+=== Examples
+
+[source,go,linenums,caption="examples.go"]
+----
+package examples
+
+import (
+  "fmt"
+  "github.com/tompaz3/fungo/ternary"
+)
+
+func Example1() {
+  user := userRepository.FindByID(1)
+  userName := ternary.If[string](user != nil).
+    ThenF(func() string {
+      return user.Name
+    }).
+    Else("<unknown>")
+
+  fmt.Println(userName)
+}
+
+func Example2() {
+  numType := ternary.If[string](7%2 == 0).
+    Then("even").
+    Else("odd")
+
+  fmt.Println(numType)
+}
+----
