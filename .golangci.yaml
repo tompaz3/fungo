@@ -159,13 +159,13 @@ linters:
     - staticcheck # It's a set of rules from staticcheck. It's not the same thing as the staticcheck binary. The author of staticcheck doesn't support or approve the use of staticcheck as a library inside golangci-lint.
     - tagalign # Check that struct tags are well aligned.
     - tagliatelle # Checks the struct tags.
-    - tenv # Tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17.
     - testpackage # Linter that makes you use a separate _test package.
     - thelper # Thelper detects tests helpers which is not start with t.Helper() method.
     - unconvert # Remove unnecessary type conversions.
     - unparam # Reports unused function parameters.
     - unused # Checks Go code for unused constants, variables, functions and types.
     - usestdlibvars # A linter that detect the possibility to use variables/constants from the Go standard library.
+    - usetesting # Reports the use of testing.T in non-test files.
     - wastedassign # Finds wasted assignment statements.
     - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
     - wrapcheck # Checks that errors returned from external packages are wrapped.
