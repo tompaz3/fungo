@@ -1,0 +1,64 @@
+= Trampoline
+:sectnums:
+:sectnumlevels: 5
+:toc: left
+:toclevels: 5
+:source-highlighter: rouge
+:icons: font
+
+This package provides a simple trampoline (Tail call optiomisation) implementation in Go.
+
+[#overview]
+== Overview
+
+Package provides a simple trampoline implementation in Go. It allows to avoid stack overflow when using recursive functions, "stacking" the invocations in memory instead.
+
+[#overview-available_methods]
+=== Available methods
+
+* `Complete[T any](T) Trampoline[T]` - to create a complete instance of `Trampoline`.
+* `Next[T any](TailCall[T]) Trampoline[T]` - to introduce next recursive call in the trampoline.
+
+[#overview-examples]
+=== Examples
+
+You can also see the link:trampoline_test.go[trampoline_test.go] file for more examples.
+
+[source,go,linenums,caption="examples.go"]
+----
+package examples
+
+import (
+  "fmt"
+  "github.com/tompaz3/fungo/trampoline"
+)
+
+  type LinkedList[T any] interface {
+    Value() T
+    Size() int
+    Next() LinkedList[T]
+  }
+
+  type Result[T any] struct {
+    Value T
+    Valid bool
+  }
+
+  func iterateToLast[T any](list LinkedList[T]) trampoline.Trampoline[Result[T]] {
+    if list.Size() == 0 {
+      return trampoline.Complete(Result[T]{})
+    }
+    if list.Size() == 1 {
+      return trampoline.Complete(Result[T]{Value: list.Value(), Valid: true})
+    }
+
+    return trampoline.Next(func() trampoline.Trampoline[Result[T]] {
+      return iterateToLast(list.Next())
+    })
+  }
+
+  func GetLast(list LinkedList[Result[int]]) Result[int] {
+    return iterateToLast(list).Execute()
+  }
+----
+
